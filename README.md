@@ -18,6 +18,7 @@ path.py
 numpy
 pandas
 tqdm
+pillow
 ```
 
 ## Training

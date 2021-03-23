@@ -16,6 +16,7 @@ from multiscaleloss import multiscaleEPE, realEPE
 import datetime
 from tensorboardX import SummaryWriter
 from util import AverageMeter, save_checkpoint
+from PIL import Image
 
 model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__"))
@@ -86,8 +87,12 @@ class SpecklesDataset(Dataset):
         Dispx_name = os.path.join(self.root_dir, self.Speckles_frame.iloc[idx, 2])
         Dispy_name = os.path.join(self.root_dir, self.Speckles_frame.iloc[idx, 3])
        
-        Ref   = np.genfromtxt(Ref_name, delimiter=',')
-        Def   = np.genfromtxt(Def_name, delimiter=',')
+        # Read Ref & Def Images in ".png" format
+        Ref   = Image.open(Ref_name)
+        Ref   = np.array(Ref, dtype=np.float64)
+        Def   = Image.open(Def_name)
+        Def   = np.array(Def, dtype=np.float64)
+        # Read Disp maps in ".csv" format
         Dispx = np.genfromtxt(Dispx_name, delimiter=',')
         Dispy = np.genfromtxt(Dispy_name, delimiter=',')
 
