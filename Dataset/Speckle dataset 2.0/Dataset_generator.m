@@ -111,15 +111,15 @@ parfor img = 1:363
 
     % Define the regions size 
     for l = 1:n
-    if l <11 % l==1
+    if l==1
         s = 128;
-    elseif  l<21 % l==2
+    elseif  l==2
         s = 64;
-    elseif  l<31 % l==3
+    elseif  l==3
         s = 32;
-    elseif  l<41 % l==4
+    elseif  l==4
         s = 16;
-    elseif  l<51 % l==5
+    elseif  l==5
         s = 8;
     else
         s = 4;
