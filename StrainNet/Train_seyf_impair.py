@@ -60,7 +60,7 @@ parser.add_argument('--pretrained', dest='pretrained', default=None,
                     help='path to pre-trained model')
 parser.add_argument('--div-flow', default=2,
                     help='value by which flow will be divided. Original value is 2')
-parser.add_argument('--milestones', default=[40,80,120,160,200,240], metavar='N', nargs='*', help='epochs at which learning rate is divided by 2')
+parser.add_argument('--milestones', default=[100,150,200], metavar='N', nargs='*', help='epochs at which learning rate is divided by 2')
 
 best_EPE = -1
 n_iter = 0
@@ -71,7 +71,7 @@ class SpecklesDataset(Dataset):
 
     def __init__(self, csv_file, root_dir, transform=None):
  
-        self.Speckles_frame = pd.read_csv(csv_file) 
+        self.Speckles_frame = pd.read_csv(csv_file, header=None)  
         self.root_dir = root_dir
         self.transform = transform
 
@@ -87,15 +87,11 @@ class SpecklesDataset(Dataset):
         Dispx_name = os.path.join(self.root_dir, self.Speckles_frame.iloc[idx, 2])
         Dispy_name = os.path.join(self.root_dir, self.Speckles_frame.iloc[idx, 3])
        
-        # Read Ref & Def Images in ".png" format
-        Ref   = Image.open(Ref_name)
-        Ref   = np.array(Ref, dtype=np.float64)
-        Def   = Image.open(Def_name)
-        Def   = np.array(Def, dtype=np.float64)
-        # Read Disp maps in ".csv" format
+        Ref   = np.genfromtxt(Ref_name, delimiter=',')
+        Def   = np.genfromtxt(Def_name, delimiter=',')
         Dispx = np.genfromtxt(Dispx_name, delimiter=',')
         Dispy = np.genfromtxt(Dispy_name, delimiter=',')
-
+        
         Ref = Ref
         Def = Def
         Dispx = Dispx
@@ -154,9 +150,9 @@ def main():
     transform = transforms.Compose([Normalization()])
         
     
-    train_set = SpecklesDataset(csv_file='/home/anas/train_8x8_h/Train_annotations.csv', root_dir='/home/anas/speckle_generator/dataset_3/', transform = transform)
-    test_set = SpecklesDataset(csv_file='/home/anas/train_8x8_h/Test_annotations.csv', root_dir='/home/anas/speckle_generator/dataset_3/', transform = transform)
-    
+    train_set = SpecklesDataset(csv_file='/home/anas/old/anas/speckle_generator/impair_dataset/Train_annotations.csv', root_dir='/home/anas/old/anas/speckle_generator/impair_dataset/Train_Data/', transform = transform)
+    test_set = SpecklesDataset(csv_file='/home/anas/old/anas/speckle_generator/impair_dataset/Test_annotations.csv', root_dir='/home/anas/old/anas/speckle_generator/impair_dataset/Test_Data/', transform = transform)
+     
     
     print('{} samples found, {} train samples and {} test samples '.format(len(test_set)+len(train_set),
                                                                            len(train_set),

@@ -10,6 +10,9 @@ import torchvision.transforms as transforms
 from imageio import imread, imwrite
 import numpy as np
 
+import os
+from tensorboardX import SummaryWriter
+
 
 model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__"))
@@ -44,6 +47,9 @@ def main():
         save_path = Path(args.output)
     print('=> will save everything to {}'.format(save_path))
     save_path.makedirs_p()
+
+    # create summary
+    test_writer = SummaryWriter(os.path.join(save_path,'model_viz'))
     
     # Data loading code
     input_transform = transforms.Compose([transforms.Normalize(mean=[0,0,0], std=[255,255,255])
@@ -101,6 +107,11 @@ def main():
         if args.arch == 'StrainNet_h':
             output = torch.nn.functional.interpolate(input=output, scale_factor=2, mode='bilinear')
  
+        # add graph to summary
+        test_writer.add_graph(model, input_var)
+
+        # convert model to ONNX
+        torch.onnx.export(model, input_var, save_path/'model.onnx')
         
         output_to_write = output.data.cpu()
         output_to_write = output_to_write.numpy()       

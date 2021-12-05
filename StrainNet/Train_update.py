@@ -12,7 +12,8 @@ from torch.utils.data import Dataset, DataLoader
 import models
 import pandas as pd
 import numpy as np
-from multiscaleloss import multiscaleEPE, realEPE
+# import modified function
+from multiscaleloss import multiscaleEPE, realEPE, multiscaleEPE_outList
 import datetime
 from tensorboardX import SummaryWriter
 from util import AverageMeter, save_checkpoint
@@ -60,7 +61,7 @@ parser.add_argument('--pretrained', dest='pretrained', default=None,
                     help='path to pre-trained model')
 parser.add_argument('--div-flow', default=2,
                     help='value by which flow will be divided. Original value is 2')
-parser.add_argument('--milestones', default=[40,80,120,160,200,240], metavar='N', nargs='*', help='epochs at which learning rate is divided by 2')
+parser.add_argument('--milestones', default=[100,150,200], metavar='N', nargs='*', help='epochs at which learning rate is divided by 2')
 
 best_EPE = -1
 n_iter = 0
@@ -71,7 +72,8 @@ class SpecklesDataset(Dataset):
 
     def __init__(self, csv_file, root_dir, transform=None):
  
-        self.Speckles_frame = pd.read_csv(csv_file) 
+        self.Speckles_frame = pd.read_csv(csv_file, header=None)
+        self.annot_file = csv_file  
         self.root_dir = root_dir
         self.transform = transform
 
@@ -87,15 +89,11 @@ class SpecklesDataset(Dataset):
         Dispx_name = os.path.join(self.root_dir, self.Speckles_frame.iloc[idx, 2])
         Dispy_name = os.path.join(self.root_dir, self.Speckles_frame.iloc[idx, 3])
        
-        # Read Ref & Def Images in ".png" format
-        Ref   = Image.open(Ref_name)
-        Ref   = np.array(Ref, dtype=np.float64)
-        Def   = Image.open(Def_name)
-        Def   = np.array(Def, dtype=np.float64)
-        # Read Disp maps in ".csv" format
+        Ref   = np.genfromtxt(Ref_name, delimiter=',')
+        Def   = np.genfromtxt(Def_name, delimiter=',')
         Dispx = np.genfromtxt(Dispx_name, delimiter=',')
         Dispy = np.genfromtxt(Dispy_name, delimiter=',')
-
+        
         Ref = Ref
         Def = Def
         Dispx = Dispx
@@ -154,10 +152,15 @@ def main():
     transform = transforms.Compose([Normalization()])
         
     
-    train_set = SpecklesDataset(csv_file='/home/anas/train_8x8_h/Train_annotations.csv', root_dir='/home/anas/speckle_generator/dataset_3/', transform = transform)
-    test_set = SpecklesDataset(csv_file='/home/anas/train_8x8_h/Test_annotations.csv', root_dir='/home/anas/speckle_generator/dataset_3/', transform = transform)
-    
-    
+    train_set = SpecklesDataset(csv_file='/home/anas/old/anas/speckle_generator/impair_dataset/Train_annotations.csv', root_dir='/home/anas/old/anas/speckle_generator/impair_dataset/Train_Data/', transform = transform)
+    test_set = SpecklesDataset(csv_file='/home/anas/old/anas/speckle_generator/impair_dataset/Test_annotations.csv', root_dir='/home/anas/old/anas/speckle_generator/impair_dataset/Test_Data/', transform = transform)
+     
+    #print args & dataset details
+    print("Training dataset: \n\tDataset_dir = {}\n\tAnnotation_file = {}".format(train_set.root_dir, train_set.annot_file))
+    print("Validation dataset: \n\tDataset_dir = {}\n\tAnnotation_file = {}".format(test_set.root_dir, test_set.annot_file))
+
+    print("Input args = ", args)
+
     print('{} samples found, {} train samples and {} test samples '.format(len(test_set)+len(train_set),
                                                                            len(train_set),
                                                                            len(test_set)))
@@ -173,7 +176,7 @@ def main():
     # create model
     if args.pretrained:
         network_data = torch.load(args.pretrained)
-        print('=> using pre-trained model')
+        print('=> using pre-trained model ==> ', args.pretrained)
     else:
         network_data = None
         print('creating model')
@@ -259,7 +262,18 @@ def train(train_loader, model, optimizer, epoch, train_writer,scheduler):
             # h, w = target.size()[-2:]
             # output = [F.interpolate(output[0], (h,w)), *output[1:]]
 
-        loss = multiscaleEPE(output, target, weights=args.multiscale_weights, sparse=args.sparse)
+        # loss = multiscaleEPE(output, target, weights=args.multiscale_weights, sparse=args.sparse)
+        
+        # calc multiscale losses list and  their sum "loss"
+        multiscale_loss_list, loss = multiscaleEPE_outList(output, target, weights=args.multiscale_weights, sparse=args.sparse)
+        
+        # record multiscale_loss_list
+        for idx in range(len(multiscale_loss_list)):
+            scalar_name = 'train_loss_flow{}'.format(idx+2)
+            train_writer.add_scalar(scalar_name, multiscale_loss_list[idx].item(), n_iter)
+            # print(scalar_name, " = ", multiscale_loss_list[idx].item())
+
+        
         flow2_EPE = args.div_flow * realEPE(output[0], target, sparse=args.sparse)
         # record loss and EPE
         losses.update(loss.item(), target.size(0))

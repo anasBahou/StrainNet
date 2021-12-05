@@ -87,15 +87,11 @@ class SpecklesDataset(Dataset):
         Dispx_name = os.path.join(self.root_dir, self.Speckles_frame.iloc[idx, 2])
         Dispy_name = os.path.join(self.root_dir, self.Speckles_frame.iloc[idx, 3])
        
-        # Read Ref & Def Images in ".png" format
-        Ref   = Image.open(Ref_name)
-        Ref   = np.array(Ref, dtype=np.float64)
-        Def   = Image.open(Def_name)
-        Def   = np.array(Def, dtype=np.float64)
-        # Read Disp maps in ".csv" format
+        Ref   = np.genfromtxt(Ref_name, delimiter=',')
+        Def   = np.genfromtxt(Def_name, delimiter=',')
         Dispx = np.genfromtxt(Dispx_name, delimiter=',')
         Dispy = np.genfromtxt(Dispy_name, delimiter=',')
-
+        
         Ref = Ref
         Def = Def
         Dispx = Dispx
@@ -154,9 +150,9 @@ def main():
     transform = transforms.Compose([Normalization()])
         
     
-    train_set = SpecklesDataset(csv_file='/home/anas/train_8x8_h/Train_annotations.csv', root_dir='/home/anas/speckle_generator/dataset_3/', transform = transform)
-    test_set = SpecklesDataset(csv_file='/home/anas/train_8x8_h/Test_annotations.csv', root_dir='/home/anas/speckle_generator/dataset_3/', transform = transform)
-    
+    train_set = SpecklesDataset(csv_file='/home/anas/old/anas/speckle_generator/seyf_dataset/Train_annotations.csv', root_dir='/home/anas/old/anas/speckle_generator/seyf_dataset/Train_Data/', transform = transform)
+    test_set = SpecklesDataset(csv_file='/home/anas/old/anas/speckle_generator/seyf_dataset/Test_annotations.csv', root_dir='/home/anas/old/anas/speckle_generator/seyf_dataset/Test_Data/', transform = transform)
+     
     
     print('{} samples found, {} train samples and {} test samples '.format(len(test_set)+len(train_set),
                                                                            len(train_set),

@@ -24,7 +24,7 @@ model_names = sorted(name for name in models.__dict__
 parser = argparse.ArgumentParser(description='StrainNet Training on speckle dataset',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
                                                      
-parser.add_argument('--arch', default='StrainNet_f',choices=['StrainNet_f','StrainNet_h'],
+parser.add_argument('--arch', default='StrainNet_f',choices=['StrainNet_f','StrainNet_h','StrainNet_l'],
                     help='network f or h')                    
 parser.add_argument('--solver', default='adam',choices=['adam','sgd'],
                     help='solver algorithms')
@@ -48,9 +48,9 @@ parser.add_argument('--weight-decay', '--wd', default=4e-4, type=float,
                     metavar='W', help='weight decay')
 parser.add_argument('--bias-decay', default=0, type=float,
                     metavar='B', help='bias decay')
-parser.add_argument('--multiscale-weights', '-w', default=[0.005,0.01,0.02,0.08,0.32], type=float, nargs=5,
+parser.add_argument('--multiscale-weights', '-w', default=[0.02,0.08,0.32], type=float, nargs=3,
                     help='training weight for each scale, from highest resolution (flow2) to lowest (flow6)',
-                    metavar=('W2', 'W3', 'W4', 'W5', 'W6'))
+                    metavar=('W2', 'W3', 'W4'))
 parser.add_argument('--sparse', action='store_true',
                     help='look for NaNs in target flow when computing EPE, avoid if flow is garantied to be dense,'
                     ' ')
@@ -87,15 +87,11 @@ class SpecklesDataset(Dataset):
         Dispx_name = os.path.join(self.root_dir, self.Speckles_frame.iloc[idx, 2])
         Dispy_name = os.path.join(self.root_dir, self.Speckles_frame.iloc[idx, 3])
        
-        # Read Ref & Def Images in ".png" format
-        Ref   = Image.open(Ref_name)
-        Ref   = np.array(Ref, dtype=np.float64)
-        Def   = Image.open(Def_name)
-        Def   = np.array(Def, dtype=np.float64)
-        # Read Disp maps in ".csv" format
+        Ref   = np.genfromtxt(Ref_name, delimiter=',')
+        Def   = np.genfromtxt(Def_name, delimiter=',')
         Dispx = np.genfromtxt(Dispx_name, delimiter=',')
         Dispy = np.genfromtxt(Dispy_name, delimiter=',')
-
+        
         Ref = Ref
         Def = Def
         Dispx = Dispx
@@ -154,8 +150,8 @@ def main():
     transform = transforms.Compose([Normalization()])
         
     
-    train_set = SpecklesDataset(csv_file='/home/anas/train_8x8_h/Train_annotations.csv', root_dir='/home/anas/speckle_generator/dataset_3/', transform = transform)
-    test_set = SpecklesDataset(csv_file='/home/anas/train_8x8_h/Test_annotations.csv', root_dir='/home/anas/speckle_generator/dataset_3/', transform = transform)
+    train_set = SpecklesDataset(csv_file='/home/anas/old/anas/speckle_generator/seyf_dataset/Train_annotations.csv', root_dir='/home/anas/old/anas/speckle_generator/seyf_dataset/Train_Data/', transform = transform)
+    test_set = SpecklesDataset(csv_file='/home/anas/old/anas/speckle_generator/seyf_dataset/Test_annotations.csv', root_dir='/home/anas/old/anas/speckle_generator/seyf_dataset/Test_Data/', transform = transform)
     
     
     print('{} samples found, {} train samples and {} test samples '.format(len(test_set)+len(train_set),
@@ -243,10 +239,12 @@ def train(train_loader, model, optimizer, epoch, train_writer,scheduler):
         target = torch.cat([target_x,target_y],1).to(device)
               
         in_ref = batch['Ref'].float().to(device) 
-        in_ref = torch.cat([in_ref,in_ref,in_ref],1).to(device)
+        # in_ref = torch.cat([in_ref,in_ref,in_ref],1).to(device)
+        in_ref = torch.cat([in_ref],1).to(device)
         
         in_def = batch['Def'].float().to(device) 
-        in_def = torch.cat([in_def,in_def,in_def],1).to(device)
+        # in_def = torch.cat([in_def,in_def,in_def],1).to(device)
+        in_def = torch.cat([in_def],1).to(device)
         input = torch.cat([in_ref,in_def],1).to(device)
         
 
@@ -304,10 +302,12 @@ def validate(val_loader, model, epoch):
         target = torch.cat([target_x,target_y],1).to(device)
               
         in_ref = batch['Ref'].float().to(device) 
-        in_ref = torch.cat([in_ref,in_ref,in_ref],1).to(device)
+        # in_ref = torch.cat([in_ref,in_ref,in_ref],1).to(device)
+        in_ref = torch.cat([in_ref],1).to(device)
         
         in_def = batch['Def'].float().to(device) 
-        in_def = torch.cat([in_def,in_def,in_def],1).to(device)
+        # in_def = torch.cat([in_def,in_def,in_def],1).to(device)
+        in_def = torch.cat([in_def],1).to(device)
         input = torch.cat([in_ref,in_def],1).to(device)
 
         # compute output

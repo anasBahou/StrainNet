@@ -16,8 +16,8 @@ model_names = sorted(name for name in models.__dict__
 
 parser = argparse.ArgumentParser(description='StrainNet inference',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('--arch', default='StrainNet_f',choices=['StrainNet_f','StrainNet_h'],
-                    help='network f or h')                                  
+parser.add_argument('--arch', default='StrainNet_l',choices=['StrainNet_f','StrainNet_h','StrainNet_l'],
+                    help='network f or h')                               
 parser.add_argument('data', metavar='DIR',
                     help='path to images folder, image names must match \'[name]0.[ext]\' and \'[name]1.[ext]\'')
 parser.add_argument('--pretrained', metavar='PTH', help='path to pre-trained model')
@@ -83,8 +83,10 @@ def main():
             img1 = torch.from_numpy(img1).float()
             img2 = torch.from_numpy(img2).float()       
         
-            in_ref = torch.cat([img1,img1,img1],1)
-            in_def = torch.cat([img2,img2,img2],1)
+            # in_ref = torch.cat([img1,img1,img1],1)
+            # in_def = torch.cat([img2,img2,img2],1)
+            in_ref = torch.cat([img1],1)
+            in_def = torch.cat([img2],1)
             input_var = torch.cat([in_ref,in_def],1)           
 
         elif img1.ndim == 3:
@@ -99,6 +101,9 @@ def main():
         input_var = input_var.to(device)
         output = model(input_var)
         if args.arch == 'StrainNet_h':
+            output = torch.nn.functional.interpolate(input=output, scale_factor=2, mode='bilinear')
+
+        if args.arch == 'StrainNet_l':
             output = torch.nn.functional.interpolate(input=output, scale_factor=2, mode='bilinear')
  
         

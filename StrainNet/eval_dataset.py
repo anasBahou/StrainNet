@@ -147,28 +147,23 @@ def main():
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
-    train_writer = SummaryWriter(os.path.join(save_path,'train'))
-    test_writer = SummaryWriter(os.path.join(save_path,'test'))
+    # train_writer = SummaryWriter(os.path.join(save_path,'train'))
+    # test_writer = SummaryWriter(os.path.join(save_path,'test'))
 
     # Data loading code
     transform = transforms.Compose([Normalization()])
         
     
-    train_set = SpecklesDataset(csv_file='/home/anas/train_8x8_h/Train_annotations.csv', root_dir='/home/anas/speckle_generator/dataset_3/', transform = transform)
-    test_set = SpecklesDataset(csv_file='/home/anas/train_8x8_h/Test_annotations.csv', root_dir='/home/anas/speckle_generator/dataset_3/', transform = transform)
+    # train_set = SpecklesDataset(csv_file='/home/anas/train_8x8_h/Train_annotations.csv', root_dir='/home/anas/speckle_generator/dataset_3/', transform = transform)
+    test_set = SpecklesDataset(csv_file='/home/anas/speckle_generator/dataset_3/Test_annotations.csv', root_dir='/home/anas/speckle_generator/dataset_3/', transform = transform)
     
     
-    print('{} samples found, {} train samples and {} test samples '.format(len(test_set)+len(train_set),
-                                                                           len(train_set),
-                                                                           len(test_set)))
+    print('{} samples found'.format(len(test_set)+1))
     
-    train_loader = torch.utils.data.DataLoader(
-        train_set, batch_size=args.batch_size,
-        num_workers=args.workers, pin_memory =True, shuffle=True)
         
     val_loader = torch.utils.data.DataLoader(
         test_set, batch_size=args.batch_size,
-        num_workers=args.workers, pin_memory=True, shuffle=True)
+        num_workers=args.workers, shuffle=False)
 
     # create model
     if args.pretrained:
@@ -194,98 +189,12 @@ def main():
                                     momentum=args.momentum)
 
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=args.milestones, gamma=0.5)
-
-    for epoch in range(args.start_epoch, args.epochs):
         
-        # train for one epoch
-        train_loss, train_EPE = train(train_loader, model, optimizer, epoch, train_writer,scheduler)
-        train_writer.add_scalar('mean EPE', train_EPE, epoch)
+    epoch = 0
+    # evaluate on test dataset
+    with torch.no_grad():
+        EPE = validate(val_loader, model, epoch)
 
-        # evaluate on test dataset
-        with torch.no_grad():
-            EPE = validate(val_loader, model, epoch)
-        test_writer.add_scalar('mean EPE', EPE, epoch)
-
-        if best_EPE < 0:
-            best_EPE = EPE
-
-        is_best = EPE < best_EPE
-        best_EPE = min(EPE, best_EPE)
-        save_checkpoint({
-            'epoch': epoch + 1,
-            'arch': args.arch,
-            'state_dict': model.module.state_dict(),
-            'best_EPE': best_EPE,
-            'div_flow': args.div_flow
-        }, is_best, save_path)
-
-
-def train(train_loader, model, optimizer, epoch, train_writer,scheduler):
-    global n_iter, args
-    batch_time = AverageMeter()
-    data_time = AverageMeter()
-    losses = AverageMeter()
-    flow2_EPEs = AverageMeter()
-
-    epoch_size = len(train_loader) if args.epoch_size == 0 else min(len(train_loader), args.epoch_size)
-
-    # switch to train mode
-    model.train()
-
-    end = time.time()
-
-    for i, batch in enumerate(train_loader):
-        # measure data loading time
-        data_time.update(time.time() - end)
-        
-        target_x = batch['Dispx'].to(device)       
-        target_y = batch['Dispy'].to(device) 
-        target = torch.cat([target_x,target_y],1).to(device)
-              
-        in_ref = batch['Ref'].float().to(device) 
-        in_ref = torch.cat([in_ref,in_ref,in_ref],1).to(device)
-        
-        in_def = batch['Def'].float().to(device) 
-        in_def = torch.cat([in_def,in_def,in_def],1).to(device)
-        input = torch.cat([in_ref,in_def],1).to(device)
-        
-
-        # compute output
-        output = model(input)
-        
-        # if args.sparse:
-            # # Since Target pooling is not very precise when sparse,
-            # # take the highest resolution prediction and upsample it instead of downsampling target
-            # h, w = target.size()[-2:]
-            # output = [F.interpolate(output[0], (h,w)), *output[1:]]
-
-        loss = multiscaleEPE(output, target, weights=args.multiscale_weights, sparse=args.sparse)
-        flow2_EPE = args.div_flow * realEPE(output[0], target, sparse=args.sparse)
-        # record loss and EPE
-        losses.update(loss.item(), target.size(0))
-        train_writer.add_scalar('train_loss', loss.item(), n_iter)
-        flow2_EPEs.update(flow2_EPE.item(), target.size(0))
-
-        # compute gradient and do optimization step
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        scheduler.step()
-
-        # measure elapsed time
-        batch_time.update(time.time() - end)
-        end = time.time()
-
-        if i % args.print_freq == 0:
-            print('Epoch: [{0}][{1}/{2}]\t Time {3}\t Data {4}\t Loss {5}\t EPE {6}'
-                  .format(epoch, i, epoch_size, batch_time,
-                          data_time, losses, flow2_EPEs))
-        n_iter += 1
-        #break
-        # if i >= epoch_size:
-            # break
-
-    return losses.avg, flow2_EPEs.avg
 
 
 def validate(val_loader, model, epoch):
@@ -321,8 +230,8 @@ def validate(val_loader, model, epoch):
         end = time.time()
 
         if i % args.print_freq == 0:
-            print('Test: [{0}/{1}]\t Time {2}\t EPE {3}'
-                  .format(i, len(val_loader), batch_time, flow2_EPEs))
+            print('Sample: {0}\t EPE {1:.3f}'
+                  .format(i+1, flow2_EPE))
         #break          
 
     print(' * EPE {:.3f}'.format(flow2_EPEs.avg))

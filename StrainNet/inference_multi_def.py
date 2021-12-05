@@ -28,6 +28,9 @@ parser.add_argument('--div-flow', default=2, type=float,
 parser.add_argument("--img-exts", metavar='EXT', default=['tif','png', 'jpg', 'bmp', 'ppm'], nargs='*', type=str,
                     help="images extensions to glob")
 
+parser.add_argument('--ref-name', default='Ref', type=str, help='referance name without extension')
+
+
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 
@@ -42,20 +45,25 @@ def main():
         save_path = data_dir/'flow'
     else:
         save_path = Path(args.output)
-    print('=> will save everything to {}'.format(save_path))
-    save_path.makedirs_p()
+
+    save_path_root = save_path
+    save_path_root.makedirs_p()
     
     # Data loading code
     input_transform = transforms.Compose([transforms.Normalize(mean=[0,0,0], std=[255,255,255])
     ])
 
+    # Reference file name without extension
+    ref_file_name = Path(args.ref_name)
+
     img_pairs = []
     for ext in args.img_exts:
-        test_files = data_dir.files('*1.{}'.format(ext))
+        test_files = data_dir.files('Def*.{}'.format(ext))
         for file in test_files:
-            img_pair = file.parent / ('Star2.{}'.format(ext))
+            (without_ext, _) = file.splitext()
+            img_pair = file.parent / (ref_file_name + '.{}'.format(ext))
             if img_pair.isfile():
-                img_pairs.append([file, img_pair])
+                img_pairs.append([img_pair, file])
 
     print('{} samples found'.format(len(img_pairs)))
     
@@ -109,10 +117,20 @@ def main():
         disp_y = output_to_write[0,1,:,:]
         disp_y = - disp_y * args.div_flow + 1
         
-        filenamex = save_path/'{}{}'.format('Star', '_disp_x')
-        filenamey = save_path/'{}{}'.format('Star', '_disp_y')        
+        (without_ext, _) = img2_file.splitext()
+        
+        save_path = save_path_root / without_ext.basename()
+
+        print('=> saving results to {}'.format(save_path))
+        save_path.makedirs_p()
+
+        filenamex = save_path/'{}{}'.format(without_ext.basename(), '_disp_x')
+        filenamey = save_path/'{}{}'.format(without_ext.basename(), '_disp_y')     
         np.savetxt(filenamex + '.csv', disp_x,delimiter=',')
         np.savetxt(filenamey + '.csv', disp_y,delimiter=',')
+        
+        
+
         
 if __name__ == '__main__':
     main()

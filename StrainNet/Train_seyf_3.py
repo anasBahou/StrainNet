@@ -71,7 +71,8 @@ class SpecklesDataset(Dataset):
 
     def __init__(self, csv_file, root_dir, transform=None):
  
-        self.Speckles_frame = pd.read_csv(csv_file) 
+        self.Speckles_frame = pd.read_csv(csv_file, header=None) 
+        # self.Speckles_frame = pd.read_csv(csv_file, header=None)
         self.root_dir = root_dir
         self.transform = transform
 
@@ -83,19 +84,24 @@ class SpecklesDataset(Dataset):
             idx = idx.tolist()
 
         Ref_name   = os.path.join(self.root_dir, self.Speckles_frame.iloc[idx, 0])
-        Def_name   = os.path.join(self.root_dir, self.Speckles_frame.iloc[idx, 1])
+        # Def_name   = os.path.join(self.root_dir, self.Speckles_frame.iloc[idx, 1])
+        Def_name   = os.path.join('/home/anas/speckle_generator/seyf_dataset_3/', self.Speckles_frame.iloc[idx, 1]) # only the deformation that are recovered from this folder
         Dispx_name = os.path.join(self.root_dir, self.Speckles_frame.iloc[idx, 2])
         Dispy_name = os.path.join(self.root_dir, self.Speckles_frame.iloc[idx, 3])
        
         # Read Ref & Def Images in ".png" format
         Ref   = Image.open(Ref_name)
         Ref   = np.array(Ref, dtype=np.float64)
-        Def   = Image.open(Def_name)
-        Def   = np.array(Def, dtype=np.float64)
+        Def   =  np.genfromtxt(Def_name, delimiter=',')
         # Read Disp maps in ".csv" format
-        Dispx = np.genfromtxt(Dispx_name, delimiter=',')
-        Dispy = np.genfromtxt(Dispy_name, delimiter=',')
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! WARNING (inversing x & y in displacement maps)!!!!!!!!!!!!!!!!
+        # Dispx = np.genfromtxt(Dispx_name, delimiter=',')
+        # Dispy = np.genfromtxt(Dispy_name, delimiter=',')
 
+        Dispy = np.genfromtxt(Dispx_name, delimiter=',')
+        Dispx = np.genfromtxt(Dispy_name, delimiter=',')
+        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        
         Ref = Ref
         Def = Def
         Dispx = Dispx
@@ -154,8 +160,8 @@ def main():
     transform = transforms.Compose([Normalization()])
         
     
-    train_set = SpecklesDataset(csv_file='/home/anas/train_8x8_h/Train_annotations.csv', root_dir='/home/anas/speckle_generator/dataset_3/', transform = transform)
-    test_set = SpecklesDataset(csv_file='/home/anas/train_8x8_h/Test_annotations.csv', root_dir='/home/anas/speckle_generator/dataset_3/', transform = transform)
+    train_set = SpecklesDataset(csv_file='/home/anas/speckle_generator/seyf_dataset_3/Train_annotations.csv', root_dir='/home/anas/speckle_generator/dataset_5/', transform = transform)
+    test_set = SpecklesDataset(csv_file='/home/anas/speckle_generator/seyf_dataset_3/Test_annotations.csv', root_dir='/home/anas/speckle_generator/dataset_5/', transform = transform)
     
     
     print('{} samples found, {} train samples and {} test samples '.format(len(test_set)+len(train_set),

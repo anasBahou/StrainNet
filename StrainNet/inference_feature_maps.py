@@ -63,7 +63,8 @@ def main():
     network_data = torch.load(args.pretrained)
     print("=> using pre-trained model '{}'".format(args.arch))
     model = models.__dict__[args.arch](network_data).to(device)
-    model.eval()
+    # model.eval()
+    model.train()
     cudnn.benchmark = True
 
     for (img1_file, img2_file) in tqdm(img_pairs):
@@ -99,20 +100,26 @@ def main():
         input_var = input_var.to(device)
         output = model(input_var)
         if args.arch == 'StrainNet_h':
-            output = torch.nn.functional.interpolate(input=output, scale_factor=2, mode='bilinear')
+            # output = [torch.nn.functional.interpolate(input=out, size=(input_var[0].size()), mode='bilinear') for out in output]
+            output = [torch.nn.functional.interpolate(input=out, scale_factor=2, mode='bilinear') for out in output]
  
-        
-        output_to_write = output.data.cpu()
-        output_to_write = output_to_write.numpy()       
-        disp_x = output_to_write[0,0,:,:]
-        disp_x = - disp_x * args.div_flow + 1        
-        disp_y = output_to_write[0,1,:,:]
-        disp_y = - disp_y * args.div_flow + 1
-        
-        filenamex = save_path/'{}{}'.format('Star', '_disp_x')
-        filenamey = save_path/'{}{}'.format('Star', '_disp_y')        
-        np.savetxt(filenamex + '.csv', disp_x,delimiter=',')
-        np.savetxt(filenamey + '.csv', disp_y,delimiter=',')
+
+        for i in range(len(output)):
+            output_to_write = output[i].data.cpu()
+            output_to_write = output_to_write.numpy()     
+            disp_x = output_to_write[0,0,:,:]
+            disp_x = - disp_x * args.div_flow + 1        
+            disp_y = output_to_write[0,1,:,:]
+            disp_y = - disp_y * args.div_flow + 1
+
+
+            filename = save_path/'flow_{}'.format(i)
+            filename.makedirs_p()
+            
+            filenamex = filename/'{}{}'.format('Star', '_disp_x')
+            filenamey = filename/'{}{}'.format('Star', '_disp_y')        
+            np.savetxt(filenamex + '.csv', disp_x,delimiter=',')
+            np.savetxt(filenamey + '.csv', disp_y,delimiter=',')
         
 if __name__ == '__main__':
     main()

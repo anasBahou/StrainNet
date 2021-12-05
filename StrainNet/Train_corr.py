@@ -71,7 +71,8 @@ class SpecklesDataset(Dataset):
 
     def __init__(self, csv_file, root_dir, transform=None):
  
-        self.Speckles_frame = pd.read_csv(csv_file) 
+        self.Speckles_frame = pd.read_csv(csv_file, header=None) 
+        # self.Speckles_frame = pd.read_csv(csv_file, header=None)
         self.root_dir = root_dir
         self.transform = transform
 
@@ -93,9 +94,14 @@ class SpecklesDataset(Dataset):
         Def   = Image.open(Def_name)
         Def   = np.array(Def, dtype=np.float64)
         # Read Disp maps in ".csv" format
-        Dispx = np.genfromtxt(Dispx_name, delimiter=',')
-        Dispy = np.genfromtxt(Dispy_name, delimiter=',')
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! WARNING (inversing x & y in displacement maps)!!!!!!!!!!!!!!!!
+        # Dispx = np.genfromtxt(Dispx_name, delimiter=',')
+        # Dispy = np.genfromtxt(Dispy_name, delimiter=',')
 
+        Dispy = np.genfromtxt(Dispx_name, delimiter=',')
+        Dispx = np.genfromtxt(Dispy_name, delimiter=',')
+        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        
         Ref = Ref
         Def = Def
         Dispx = Dispx
@@ -154,8 +160,8 @@ def main():
     transform = transforms.Compose([Normalization()])
         
     
-    train_set = SpecklesDataset(csv_file='/home/anas/train_8x8_h/Train_annotations.csv', root_dir='/home/anas/speckle_generator/dataset_3/', transform = transform)
-    test_set = SpecklesDataset(csv_file='/home/anas/train_8x8_h/Test_annotations.csv', root_dir='/home/anas/speckle_generator/dataset_3/', transform = transform)
+    train_set = SpecklesDataset(csv_file='/home/anas/speckle_generator/dataset_6/Train_annotations.csv', root_dir='/home/anas/speckle_generator/dataset_6/', transform = transform)
+    test_set = SpecklesDataset(csv_file='/home/anas/speckle_generator/dataset_6/Test_annotations.csv', root_dir='/home/anas/speckle_generator/dataset_6/', transform = transform)
     
     
     print('{} samples found, {} train samples and {} test samples '.format(len(test_set)+len(train_set),
